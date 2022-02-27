@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Iterable
 
 import torch
-import librosa
 import numpy as np
 from scipy.io.wavfile import write
 
@@ -39,6 +38,7 @@ class Params:
         save_path: Path = None,
         vocoder: str = "HifiGan",
         seed: int = None,
+        trim_silences: bool = False,
     ) -> None:
         """使用MockingBird时自定义的参数
 
@@ -55,16 +55,19 @@ class Params:
         """
         self.seed = seed
         self.recoder = recoder_path
-        if vocoder == "HifiGan":
+        if vocoder.lower() == "hifigan":
             self.vocoder = gan_vocoder  # 速度较快
-        else:
+        elif vocoder.lower() == "wavernn":
             self.vocoder = rnn_vocoder
+        else:
+            self.vocoder = None
         self.text = text
         self.synt_path = synt_path
         self.min_stop_token: int = min_stop_token
         self.steps: int = steps
         self.style_idx: int = style_idx
         self.save_path: Path = save_path
+        self.trim_silences = trim_silences
 
     @property
     def seed(self):
@@ -142,7 +145,7 @@ class MockingBird:
             gan_vocoder.load_model(vocoder_path)
 
     @classmethod
-    def synthesize(cls, params: Params):
+    def _synthesize(cls, params: Params):
         global _synthesizers_cache
 
         if params.seed is not None:
@@ -165,10 +168,9 @@ class MockingBird:
         global _cache_encodered_wav
         embed = _cache_encodered_wav.get(params.recoder, None)
         if embed is None:
-            wav, sample_rate = librosa.load(params.recoder)
-            # write("temp.wav", sample_rate, wav) #Make sure we get the correct wav
-
-            encoder_wav = encoder.preprocess_wav(wav, sample_rate)
+            # wav, sample_rate = librosa.load(params.recoder)
+            wav = Synthesizer.load_preprocess_wav(params.recoder)
+            encoder_wav = encoder.preprocess_wav(wav)
             embed, _, _ = encoder.embed_utterance(encoder_wav, return_partials=True)
             _cache_encodered_wav[params.recoder] = embed
 
@@ -183,10 +185,26 @@ class MockingBird:
             min_stop_token=params.min_stop_token,
             steps=params.steps * 200,
         )
-        spec = np.concatenate(specs, axis=1)
         # breaks = [spec.shape[1] for spec in specs]
-        # self.current_generated = (speaker_name, spec, breaks, None)
-        wav = params.vocoder.infer_waveform(spec)
+        spec = np.concatenate(specs, axis=1)
+
+        # The part of vocoder
+        if params.vocoder:
+            wav = params.vocoder.infer_waveform(spec)
+        else:
+            logger.debug("Waveform generation with Griffin-Lim... ")
+            wav = Synthesizer.griffin_lim(spec)
+
+        # Add breaks
+        # b_ends = np.cumsum(np.array(breaks) * Synthesizer.hparams.hop_size)
+        # b_starts = np.concatenate(([0], b_ends[:-1]))
+        # wavs = [wav[start:end] for start, end, in zip(b_starts, b_ends)]
+        # breaks = [np.zeros(int(0.15 * Synthesizer.sample_rate))] * len(breaks)
+        # wav = np.concatenate([i for w, b in zip(wavs, breaks) for i in (w, b)])
+
+        # Trim excessive silences
+        if params.trim_silences:
+            wav = encoder.preprocess_wav(wav)
         wav = wav / np.abs(wav).max() * 0.97
         # Return cooked wav
         if params.save_path:
@@ -220,7 +238,7 @@ class MockingBird:
 
     @classmethod
     def genrator_voice(cls, params: Params):
-        return cls.synthesize(params)
+        return cls._synthesize(params)
 
 
 if __name__ == "__main__":

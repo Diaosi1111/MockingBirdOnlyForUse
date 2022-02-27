@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "MockingBirdOnlyForUse"
-version = "0.0.5"
+version = "0.0.8"
 description = "A Raw Use Version for MockingBird"
 authors = ["Alex Newton <sharenfan222@gmail.com>"]
 license = "LICENSE"

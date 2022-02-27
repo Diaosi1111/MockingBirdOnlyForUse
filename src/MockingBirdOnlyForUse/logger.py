@@ -1,4 +1,3 @@
-import ctypes
 import logging
 import os
 import sys
@@ -9,36 +8,6 @@ OPEN_CONSOLE_LOG = True
 OPEN_FILE_LOG = False
 LOG_FILE_PATH = None
 LOG_NAME = "null"
-
-###############################################################################################################
-# 仅限windows平台
-# Windows CMD命令行 字体颜色定义 text colors
-FOREGROUND_BLACK = 0x00  # black.
-FOREGROUND_DARKBLUE = 0x01  # dark blue.
-FOREGROUND_DARKGREEN = 0x02  # dark green.
-FOREGROUND_DARKSKYBLUE = 0x03  # dark skyblue.
-FOREGROUND_DARKRED = 0x04  # dark red.
-FOREGROUND_DARKPINK = 0x05  # dark pink.
-FOREGROUND_DARKYELLOW = 0x06  # dark yellow.
-FOREGROUND_DARKWHITE = 0x07  # dark white.
-FOREGROUND_DARKGRAY = 0x08  # dark gray.
-FOREGROUND_BLUE = 0x09  # blue.
-FOREGROUND_GREEN = 0x0A  # green.
-FOREGROUND_SKYBLUE = 0x0B  # skyblue.
-FOREGROUND_RED = 0x0C  # red.
-FOREGROUND_PINK = 0x0D  # pink.
-FOREGROUND_YELLOW = 0x0E  # yellow.
-FOREGROUND_WHITE = 0x0F  # white.
-
-LOG_COLOR_DEFAULT = FOREGROUND_DARKGRAY
-STD_OUTPUT_HANDLE = -11
-std_out_handle = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-
-
-def set_log_color(color=LOG_COLOR_DEFAULT):
-    return
-    ctypes.windll.kernel32.SetConsoleTextAttribute(std_out_handle, color)
-    return
 
 
 ###############################################################################################################
@@ -83,7 +52,7 @@ class Logger:
     ) -> None:
         self.logger = _create_logger(level, open_console, open_file, path)
 
-    def debug(self, msg, color=FOREGROUND_DARKGREEN):
+    def debug(self, msg):
         try:
             msg = "[{}][{}][{}] {}".format(
                 os.path.basename(sys._getframe(1).f_code.co_filename),
@@ -93,12 +62,10 @@ class Logger:
             )
         except:
             pass
-        set_log_color(color)
         self.logger.debug(msg)
-        set_log_color(FOREGROUND_DARKWHITE)
         return
 
-    def info(self, msg, color=FOREGROUND_DARKYELLOW):
+    def info(self, msg):
         try:
             msg = "[{}][{}][{}] {}".format(
                 os.path.basename(sys._getframe(1).f_code.co_filename),
@@ -108,12 +75,10 @@ class Logger:
             )
         except:
             pass
-        set_log_color(color)
         self.logger.info(msg)
-        set_log_color(FOREGROUND_DARKWHITE)
         return
 
-    def error(self, msg, color=FOREGROUND_DARKRED):
+    def error(self, msg):
         try:
             msg = "[{}][{}][{}] {}".format(
                 os.path.basename(sys._getframe(1).f_code.co_filename),
@@ -123,9 +88,7 @@ class Logger:
             )
         except:
             pass
-        set_log_color(color)
         self.logger.error(msg)
-        set_log_color(FOREGROUND_DARKWHITE)
         return
 
     def setlogger(

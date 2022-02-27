@@ -29,13 +29,13 @@ class HParams(object):
         return self
 
     def loadJson(self, dict):
-        logger.debug("\Loading the json with %s\n", dict)
+        logger.debug("\Loading the json with %s\n".format(dict))
         for k in dict.keys():
             self.__dict__[k] = dict[k]
         return self
 
     def dumpJson(self, fp):
-        logger.debug("\Saving the json with %s\n", fp)
+        logger.debug("\Saving the json with %s\n".format(fp))
         with fp.open("w", encoding="utf-8") as f:
             json.dump(self.__dict__, f)
         return self
