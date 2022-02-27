@@ -10,7 +10,7 @@ from .meldataset import mel_spectrogram, MAX_WAV_VALUE, load_wav
 from .models import Generator
 import soundfile as sf
 import sys
-
+from ...logger import logger
 
 generator = None  # type: Generator
 _device = None
@@ -18,9 +18,9 @@ _device = None
 
 def load_checkpoint(filepath, device):
     assert os.path.isfile(filepath)
-    print("Loading '{}'".format(filepath))
+    logger.debug("Loading '{}'".format(filepath))
     checkpoint_dict = torch.load(filepath, map_location=device)
-    print("Complete.")
+    logger.debug("Complete.")
     return checkpoint_dict
 
 
@@ -28,9 +28,8 @@ def load_model(weights_fpath, verbose=True):
     global generator, _device
 
     if verbose:
-        print("Building hifigan")
-    module_path = os.path.dirname(__file__)
-    with open(module_path + "\\config_16k_.json") as f:
+        logger.debug("Building hifigan")
+    with open(Path(os.path.dirname(__file__) + "/config_16k_.json")) as f:
         data = f.read()
     json_config = json.loads(data)
     h = AttrDict(json_config)

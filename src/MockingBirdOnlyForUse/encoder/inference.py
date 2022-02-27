@@ -7,6 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from ..logger import logger
 
 _model = None  # type: SpeakerEncoder
 _device = None  # type: torch.device
@@ -33,7 +34,10 @@ def load_model(weights_fpath: Path, device=None):
     checkpoint = torch.load(weights_fpath, _device)
     _model.load_state_dict(checkpoint["model_state"])
     _model.eval()
-    print('Loaded encoder "%s" trained to step %d' % (weights_fpath.name, checkpoint["step"]))
+    logger.info(
+        'Loaded encoder "%s" trained to step %d'
+        % (weights_fpath.name, checkpoint["step"])
+    )
 
 
 def is_loaded():
@@ -57,7 +61,10 @@ def embed_frames_batch(frames_batch):
 
 
 def compute_partial_slices(
-    n_samples, partial_utterance_n_frames=partials_n_frames, min_pad_coverage=0.75, overlap=0.5
+    n_samples,
+    partial_utterance_n_frames=partials_n_frames,
+    min_pad_coverage=0.75,
+    overlap=0.5,
 ):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain
@@ -101,7 +108,9 @@ def compute_partial_slices(
 
     # Evaluate whether extra padding is warranted or not
     last_wav_range = wav_slices[-1]
-    coverage = (n_samples - last_wav_range.start) / (last_wav_range.stop - last_wav_range.start)
+    coverage = (n_samples - last_wav_range.start) / (
+        last_wav_range.stop - last_wav_range.start
+    )
     if coverage < min_pad_coverage and len(mel_slices) > 1:
         mel_slices = mel_slices[:-1]
         wav_slices = wav_slices[:-1]
@@ -160,7 +169,9 @@ def embed_speaker(wavs, **kwargs):
     raise NotImplemented()
 
 
-def plot_embedding_as_heatmap(embed, ax=None, title="", shape=None, color_range=(0, 0.30)):
+def plot_embedding_as_heatmap(
+    embed, ax=None, title="", shape=None, color_range=(0, 0.30)
+):
     if ax is None:
         ax = plt.gca()
 

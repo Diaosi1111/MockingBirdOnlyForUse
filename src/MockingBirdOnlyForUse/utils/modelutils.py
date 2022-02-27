@@ -1,4 +1,6 @@
+from ..logger import logger
 from pathlib import Path
+
 
 def check_model_paths(encoder_path: Path, synthesizer_path: Path, vocoder_path: Path):
     # This function tests the model paths and makes sure at least one is valid.
@@ -10,7 +12,10 @@ def check_model_paths(encoder_path: Path, synthesizer_path: Path, vocoder_path: 
         return
 
     # If none of the paths exist, remind the user to download models if needed
-    print("********************************************************************************")
-    print("Error: Model files not found. Please download the models")
-    print("********************************************************************************\n")
+    logger.info(
+        "********************************************************************************\n"
+        + "Error: Model files not found. Please download the models\n"
+        + "********************************************************************************\n"
+    )
+
     quit(-1)

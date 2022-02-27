@@ -1,7 +1,7 @@
 from .models.fatchord_version import WaveRNN
 from . import hparams as hp
 import torch
-
+from ...logger import logger
 
 _model = None  # type: WaveRNN
 _device = None
@@ -11,7 +11,7 @@ def load_model(weights_fpath, verbose=True):
     global _model, _device
 
     if verbose:
-        print("Building Wave-RNN")
+        logger.debug("Building Wave-RNN")
     _model = WaveRNN(
         rnn_dims=hp.voc_rnn_dims,
         fc_dims=hp.voc_fc_dims,
@@ -34,7 +34,7 @@ def load_model(weights_fpath, verbose=True):
         _device = torch.device("cpu")
 
     if verbose:
-        print("Loading model weights at %s" % weights_fpath)
+        logger.debug("Loading model weights at %s" % weights_fpath)
     checkpoint = torch.load(weights_fpath, _device)
     _model.load_state_dict(checkpoint["model_state"])
     _model.eval()

@@ -9,6 +9,7 @@ import numpy as np
 from scipy.io.wavfile import write
 
 from .encoder import inference as encoder
+from .logger import logger
 from .synthesizer.inference import Synthesizer
 from .vocoder.hifigan import inference as gan_vocoder
 from .vocoder.wavernn import inference as rnn_vocoder
@@ -18,7 +19,9 @@ def process_text(texts: Iterable[str]) -> list[str]:
     punctuation = "！，。、,"  # punctuate and split/clean text
     processed_texts = []
     for text in texts:
-        for processed_text in re.sub(r"[{}]+".format(punctuation), "\n", text).split("\n"):
+        for processed_text in re.sub(r"[{}]+".format(punctuation), "\n", text).split(
+            "\n"
+        ):
             if processed_text:
                 processed_texts.append(processed_text.strip())
     return processed_texts
@@ -41,6 +44,7 @@ class Params:
 
         Args:
             text (str): 生成语音的目标文字
+            recoder_path (Path): 目标录音目录
             synt_path (Path, optional): Synthesizer模型，不填写时使用默认目录的第一个. Defaults to None.
             min_stop_token (int, optional): Accuracy(精度) 范围3~9. Defaults to 4.
             steps (int, optional): MaxLength(最大句长) 范围1~10. Defaults to 4.
@@ -146,7 +150,7 @@ class MockingBird:
             _synthesizers_cache = {}
 
         if not params.synt_path:
-            print("NO synthsizer is specified, try cache.")
+            logger.info("NO synthsizer is specified, try cache.")
             params.synt_path = _synthesizers_cache.items()[0]
 
         if _synthesizers_cache.get(params.synt_path) is None:
@@ -154,7 +158,7 @@ class MockingBird:
             _synthesizers_cache[params.synt_path] = current_synt
         else:
             current_synt = _synthesizers_cache[params.synt_path]
-        print(f"using synthesizer model: {params.synt_path}")
+        logger.debug(f"using synthesizer model: {params.synt_path}")
 
         # TODO load wav
         # Load input wav
@@ -205,7 +209,7 @@ class MockingBird:
             _vocoder_cache[params.synt_path] = current_synt
         else:
             current_synt = _vocoder_cache[params.synt_path]
-        print(f"using synthesizer model: {params.synt_path}")
+        logger.debug(f"using synthesizer model: {params.synt_path}")
         # def vocoder_progress(i, seq_len, b_size, gen_rate):
         #     real_time_factor = (gen_rate / Synthesizer.sample_rate) * 1000
         #     line = "Waveform generation: %d/%d (batch size: %d, rate: %.1fkHz - %.2fx real time)" \

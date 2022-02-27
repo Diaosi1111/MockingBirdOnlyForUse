@@ -4,10 +4,10 @@ import os
 import sys
 import time
 
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 OPEN_CONSOLE_LOG = True
-OPEN_FILE_LOG = True
-LOG_FILE_PATH = os.getcwd() + "/log"
+OPEN_FILE_LOG = False
+LOG_FILE_PATH = None
 LOG_NAME = "null"
 
 ###############################################################################################################
@@ -36,6 +36,7 @@ std_out_handle = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
 
 
 def set_log_color(color=LOG_COLOR_DEFAULT):
+    return
     ctypes.windll.kernel32.SetConsoleTextAttribute(std_out_handle, color)
     return
 
@@ -45,13 +46,13 @@ def set_log_color(color=LOG_COLOR_DEFAULT):
 # 初始化日志
 
 
-def create_logger(
+def _create_logger(
     level=LOG_LEVEL,
     open_console=OPEN_CONSOLE_LOG,
     open_file=OPEN_FILE_LOG,
     path=LOG_FILE_PATH,
 ):
-    logger = logging.getLogger("ArknightsAPI")
+    logger = logging.getLogger("MockingBird")
     logger.setLevel(level)
     formatter = logging.Formatter("[%(asctime)s][%(levelname)s]: %(message)s")
     if open_console:
@@ -73,8 +74,14 @@ def create_logger(
 
 
 class Logger:
-    def __init__(self) -> None:
-        self.logger = create_logger()
+    def __init__(
+        self,
+        level=LOG_LEVEL,
+        open_console=OPEN_CONSOLE_LOG,
+        open_file=OPEN_FILE_LOG,
+        path=LOG_FILE_PATH,
+    ) -> None:
+        self.logger = _create_logger(level, open_console, open_file, path)
 
     def debug(self, msg, color=FOREGROUND_DARKGREEN):
         try:
@@ -121,5 +128,24 @@ class Logger:
         set_log_color(FOREGROUND_DARKWHITE)
         return
 
+    def setlogger(
+        self,
+        level=LOG_LEVEL,
+        open_console=OPEN_CONSOLE_LOG,
+        open_file=OPEN_FILE_LOG,
+        path=LOG_FILE_PATH,
+    ):
+        self.logger = _create_logger(level, open_console, open_file, path)
+
 
 logger = Logger()
+
+
+def creat_logger(
+    level=LOG_LEVEL,
+    open_console=OPEN_CONSOLE_LOG,
+    open_file=OPEN_FILE_LOG,
+    path=LOG_FILE_PATH,
+):
+    global logger
+    logger.setlogger(level, open_console, open_file, path)

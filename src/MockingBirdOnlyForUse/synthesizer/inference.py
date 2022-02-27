@@ -1,3 +1,4 @@
+from ..logger import logger
 import torch
 from . import audio
 from .hparams import hparams
@@ -34,7 +35,7 @@ class Synthesizer:
         else:
             self.device = torch.device("cpu")
         if self.verbose:
-            print("Synthesizer using device:", self.device)
+            logger.info(f"Synthesizer using device:{self.device}")
 
         # Tacotron model will be instantiated later on first use.
         self._model = None
@@ -75,7 +76,7 @@ class Synthesizer:
         self._model.eval()
 
         if self.verbose:
-            print(
+            logger.info(
                 'Loaded synthesizer "%s" trained to step %d'
                 % (self.model_fpath.name, self._model.state_dict()["step"])
             )
@@ -109,11 +110,12 @@ class Synthesizer:
 
             simple_table([("Tacotron", str(tts_k) + "k"), ("r", self._model.r)])
 
-        print("Read " + str(texts))
+        logger.debug("Read " + str(texts))
         texts = [
-            " ".join(lazy_pinyin(v, style=Style.TONE3, neutral_tone_with_five=True)) for v in texts
+            " ".join(lazy_pinyin(v, style=Style.TONE3, neutral_tone_with_five=True))
+            for v in texts
         ]
-        print("Synthesizing " + str(texts))
+        logger.debug("Synthesizing " + str(texts))
         # Preprocess text inputs
         inputs = [text_to_sequence(text, hparams.tts_cleaner_names) for text in texts]
         if not isinstance(embeddings, list):
@@ -132,7 +134,7 @@ class Synthesizer:
         specs = []
         for i, batch in enumerate(batched_inputs, 1):
             if self.verbose:
-                print(f"\n| Generating {i}/{len(batched_inputs)}")
+                logger.debug(f"\n| Generating {i}/{len(batched_inputs)}")
 
             # Pad texts so they are all the same length
             text_lens = [len(text) for text in batch]
@@ -163,7 +165,7 @@ class Synthesizer:
                 specs.append(m)
 
         if self.verbose:
-            print("\n\nDone.\n")
+            logger.debug("\n\nDone.\n")
         return (specs, alignments) if return_alignments else specs
 
     @staticmethod
@@ -178,7 +180,10 @@ class Synthesizer:
         # denoise
         if len(wav) > hparams.sample_rate * (0.3 + 0.1):
             noise_wav = np.concatenate(
-                [wav[: int(hparams.sample_rate * 0.15)], wav[-int(hparams.sample_rate * 0.15) :]]
+                [
+                    wav[: int(hparams.sample_rate * 0.15)],
+                    wav[-int(hparams.sample_rate * 0.15) :],
+                ]
             )
             profile = logmmse.profile_noise(noise_wav, hparams.sample_rate)
             wav = logmmse.denoise(wav, profile)

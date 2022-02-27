@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from .global_style_token import GlobalStyleToken
 from ..gst_hyperparameters import GSTHyperparameters as gst_hp
 from ..hparams import hparams
+from ...logger import logger
 
 
 class HighwayNetwork(nn.Module):
@@ -29,7 +30,10 @@ class Encoder(nn.Module):
         cbhg_channels = encoder_dims
         self.embedding = nn.Embedding(num_chars, embed_dims)
         self.pre_net = PreNet(
-            embed_dims, fc1_dims=prenet_dims[0], fc2_dims=prenet_dims[1], dropout=dropout
+            embed_dims,
+            fc1_dims=prenet_dims[0],
+            fc2_dims=prenet_dims[1],
+            dropout=dropout,
         )
         self.cbhg = CBHG(
             K=K,
@@ -108,8 +112,12 @@ class CBHG(nn.Module):
 
         self.maxpool = nn.MaxPool1d(kernel_size=2, stride=1, padding=1)
 
-        self.conv_project1 = BatchNormConv(len(self.bank_kernels) * channels, proj_channels[0], 3)
-        self.conv_project2 = BatchNormConv(proj_channels[0], proj_channels[1], 3, relu=False)
+        self.conv_project1 = BatchNormConv(
+            len(self.bank_kernels) * channels, proj_channels[0], 3
+        )
+        self.conv_project2 = BatchNormConv(
+            proj_channels[0], proj_channels[1], 3, relu=False
+        )
 
         # Fix the highway input if necessary
         if proj_channels[-1] != channels:
@@ -215,10 +223,16 @@ class LSA(nn.Module):
     def __init__(self, attn_dim, kernel_size=31, filters=32):
         super().__init__()
         self.conv = nn.Conv1d(
-            1, filters, padding=(kernel_size - 1) // 2, kernel_size=kernel_size, bias=True
+            1,
+            filters,
+            padding=(kernel_size - 1) // 2,
+            kernel_size=kernel_size,
+            bias=True,
         )
         self.L = nn.Linear(filters, attn_dim, bias=False)
-        self.W = nn.Linear(attn_dim, attn_dim, bias=True)  # Include the attention bias in this term
+        self.W = nn.Linear(
+            attn_dim, attn_dim, bias=True
+        )  # Include the attention bias in this term
         self.v = nn.Linear(attn_dim, 1, bias=False)
         self.cumulative = None
         self.attention = None
@@ -260,7 +274,13 @@ class Decoder(nn.Module):
     max_r = 20
 
     def __init__(
-        self, n_mels, encoder_dims, decoder_dims, lstm_dims, dropout, speaker_embedding_size
+        self,
+        n_mels,
+        encoder_dims,
+        decoder_dims,
+        lstm_dims,
+        dropout,
+        speaker_embedding_size,
     ):
         super().__init__()
         self.register_buffer("r", torch.tensor(1, dtype=torch.int))
@@ -275,7 +295,9 @@ class Decoder(nn.Module):
         self.attn_rnn = nn.GRUCell(
             encoder_dims + prenet_dims[1] + speaker_embedding_size, decoder_dims
         )
-        self.rnn_input = nn.Linear(encoder_dims + decoder_dims + speaker_embedding_size, lstm_dims)
+        self.rnn_input = nn.Linear(
+            encoder_dims + decoder_dims + speaker_embedding_size, lstm_dims
+        )
         self.res_rnn1 = nn.LSTMCell(lstm_dims, lstm_dims)
         self.res_rnn2 = nn.LSTMCell(lstm_dims, lstm_dims)
         self.mel_proj = nn.Linear(lstm_dims, n_mels * self.max_r, bias=False)
@@ -386,16 +408,25 @@ class Tacotron(nn.Module):
         if hparams.use_gst:
             self.gst = GlobalStyleToken(speaker_embedding_size)
         self.decoder = Decoder(
-            n_mels, encoder_dims, decoder_dims, lstm_dims, dropout, speaker_embedding_size
+            n_mels,
+            encoder_dims,
+            decoder_dims,
+            lstm_dims,
+            dropout,
+            speaker_embedding_size,
         )
-        self.postnet = CBHG(postnet_K, n_mels, postnet_dims, [postnet_dims, fft_bins], num_highways)
+        self.postnet = CBHG(
+            postnet_K, n_mels, postnet_dims, [postnet_dims, fft_bins], num_highways
+        )
         self.post_proj = nn.Linear(postnet_dims, fft_bins, bias=False)
 
         self.init_model()
         self.num_params()
 
         self.register_buffer("step", torch.zeros(1, dtype=torch.long))
-        self.register_buffer("stop_threshold", torch.tensor(stop_threshold, dtype=torch.float32))
+        self.register_buffer(
+            "stop_threshold", torch.tensor(stop_threshold, dtype=torch.float32)
+        )
 
     @property
     def r(self):
@@ -407,7 +438,9 @@ class Tacotron(nn.Module):
 
     @staticmethod
     def _concat_speaker_embedding(outputs, speaker_embeddings):
-        speaker_embeddings_ = speaker_embeddings.expand(outputs.size(0), outputs.size(1), -1)
+        speaker_embeddings_ = speaker_embeddings.expand(
+            outputs.size(0), outputs.size(1), -1
+        )
         outputs = torch.cat([outputs, speaker_embeddings_], dim=-1)
         return outputs
 
@@ -456,7 +489,14 @@ class Tacotron(nn.Module):
         # Run the decoder loop
         for t in range(0, steps, self.r):
             prenet_in = mels[:, :, t - 1] if t > 0 else go_frame
-            mel_frames, scores, hidden_states, cell_states, context_vec, stop_tokens = self.decoder(
+            (
+                mel_frames,
+                scores,
+                hidden_states,
+                cell_states,
+                context_vec,
+                stop_tokens,
+            ) = self.decoder(
                 encoder_seq,
                 encoder_seq_proj,
                 prenet_in,
@@ -485,7 +525,9 @@ class Tacotron(nn.Module):
 
         return mel_outputs, linear, attn_scores, stop_outputs
 
-    def generate(self, x, speaker_embedding=None, steps=2000, style_idx=0, min_stop_token=5):
+    def generate(
+        self, x, speaker_embedding=None, steps=2000, style_idx=0, min_stop_token=5
+    ):
         self.eval()
         device = x.device  # use same device as parameters
 
@@ -540,7 +582,14 @@ class Tacotron(nn.Module):
         # Run the decoder loop
         for t in range(0, steps, self.r):
             prenet_in = mel_outputs[-1][:, :, -1] if t > 0 else go_frame
-            mel_frames, scores, hidden_states, cell_states, context_vec, stop_tokens = self.decoder(
+            (
+                mel_frames,
+                scores,
+                hidden_states,
+                cell_states,
+                context_vec,
+                stop_tokens,
+            ) = self.decoder(
                 encoder_seq,
                 encoder_seq_proj,
                 prenet_in,
@@ -583,8 +632,8 @@ class Tacotron(nn.Module):
         self.zero_grad()
         for name, child in self.named_children():
             if name in whitelist_layers:
-                print("Trainable Layer: %s" % name)
-                print(
+                logger.info("Trainable Layer: %s" % name)
+                logger.info(
                     "Trainable Parameters: %.3f"
                     % sum([np.prod(p.size()) for p in child.parameters()])
                 )
@@ -598,9 +647,9 @@ class Tacotron(nn.Module):
         # assignment to parameters or buffers is overloaded, updates internal dict entry
         self.step = self.step.data.new_tensor(1)
 
-    def log(self, path, msg):
-        with open(path, "a") as f:
-            print(msg, file=f)
+    # def log(self, path, msg):
+    #     with open(path, "a") as f:
+    #         print(msg, file=f)
 
     def load(self, path, device, optimizer=None):
         # Use device of model params as location for loaded state
@@ -631,5 +680,5 @@ class Tacotron(nn.Module):
         parameters = filter(lambda p: p.requires_grad, self.parameters())
         parameters = sum([np.prod(p.size()) for p in parameters]) / 1_000_000
         if print_out:
-            print("Trainable Parameters: %.3fM" % parameters)
+            logger.debug("Trainable Parameters: %.3fM" % parameters)
         return parameters

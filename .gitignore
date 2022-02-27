@@ -21,3 +21,4 @@ g_hifigan.pt
 *.toc
 *.wav
 *.sh
+.pypirc

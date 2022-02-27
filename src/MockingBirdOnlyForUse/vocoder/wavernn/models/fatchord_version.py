@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from ...distribution import sample_from_discretized_mix_logistic
 from ...display import *
 from ...wavernn.audio import *
+from ....logger import logger
 
 
 class ResBlock(nn.Module):
@@ -452,4 +453,4 @@ class WaveRNN(nn.Module):
         parameters = filter(lambda p: p.requires_grad, self.parameters())
         parameters = sum([np.prod(p.size()) for p in parameters]) / 1_000_000
         if print_out:
-            print("Trainable Parameters: %.3fM" % parameters)
+            logger.debug("Trainable Parameters: %.3fM" % parameters)
